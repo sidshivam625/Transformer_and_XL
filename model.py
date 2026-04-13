@@ -169,6 +169,19 @@ class TransformerXL(nn.Module):
         self.norm = LayerNormalization(d_model)
         self.proj = nn.Linear(d_model, vocab_size)
 
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, std=0.02)
+        elif isinstance(module, LayerNormalization):
+            nn.init.ones_(module.alpha)
+            nn.init.zeros_(module.bias)
+
     def init_mems(self, batch_size):
         return [None for _ in range(len(self.layers))]
 

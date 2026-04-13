@@ -59,7 +59,7 @@ def test_overfit():
     ).to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = AdamW(model.parameters(), lr=1e-3) # maybe slightly higher LR for quick overfit
+    optimizer = AdamW(model.parameters(), lr=2e-4)
 
     for epoch in range(config.epochs):
         model.train()
