@@ -110,9 +110,10 @@ class MultiHeadAttentionXL(nn.Module):
 
         attn = (AC + BD) / math.sqrt(self.d_head)
 
-        mask = torch.tril(torch.ones(T, S, device=x.device)).bool()
-        if S > T:
-            mask = torch.cat([torch.ones(T, S - T, device=x.device, dtype=torch.bool), mask], dim=1)
+        mem_span = S - T
+        q_pos = torch.arange(T, device=x.device).unsqueeze(1)
+        k_pos = torch.arange(S, device=x.device).unsqueeze(0)
+        mask = k_pos <= (q_pos + mem_span)
         attn = attn.masked_fill(~mask, float('-inf'))
 
         attn = torch.softmax(attn, dim=-1)

@@ -91,7 +91,7 @@ def train():
         print(f"\nEpoch {epoch+1}/{config.epochs}")
         model.train()
 
-        mems = model.init_mems(config.batch_size)
+        mems = None
 
         total_loss = 0
 
@@ -100,6 +100,9 @@ def train():
         for x, y in loop:
             x = x.to(device)
             y = y.to(device)
+
+            if mems is None:
+                mems = model.init_mems(x.size(0))
 
             optimizer.zero_grad()
 
@@ -136,12 +139,15 @@ def train():
         model.eval()
         val_loss = 0
 
-        mems = model.init_mems(config.batch_size)
+        mems = None
 
         with torch.no_grad():
             for x, y in val_loader:
                 x = x.to(device)
                 y = y.to(device)
+
+                if mems is None:
+                    mems = model.init_mems(x.size(0))
 
                 logits, mems = model(x, mems)
 

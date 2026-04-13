@@ -2,19 +2,16 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
-from transformers import GPT2Tokenizer
-from tqdm import tqdm
 
 from config import Config
 from model import TransformerXL
 
 class TinyDataset(Dataset):
-    def __init__(self, seq_len):
+    def __init__(self, seq_len, repeats=1000):
         self.seq_len = seq_len
-        text = "hello world " * 1000
-        
-        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-        tokens = self.tokenizer.encode(text)
+
+        pattern = [1, 2, 3, 2]  # tiny deterministic pattern to force quick overfit
+        tokens = pattern * repeats
         self.data = torch.tensor(tokens, dtype=torch.long)
 
     def __len__(self):
@@ -42,6 +39,8 @@ def test_overfit():
     device = torch.device(config.device if torch.cuda.is_available() else "cpu")
 
     train_dataset = TinyDataset(config.seq_len)
+    config.vocab_size = int(train_dataset.data.max().item()) + 1
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
@@ -63,11 +62,13 @@ def test_overfit():
 
     for epoch in range(config.epochs):
         model.train()
-        mems = model.init_mems(config.batch_size)
+        mems = None
         total_loss = 0
         
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
+            if mems is None:
+                mems = model.init_mems(x.size(0))
             optimizer.zero_grad()
             
             logits, mems = model(x, mems)

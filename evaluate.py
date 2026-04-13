@@ -40,12 +40,15 @@ def evaluate(split="test"):
     criterion = torch.nn.CrossEntropyLoss()
     total_loss = 0.0
 
-    mems = model.init_mems(config.batch_size)
+    mems = None
 
     with torch.no_grad():
         for x, y in loader:
             x = x.to(device)
             y = y.to(device)
+
+            if mems is None:
+                mems = model.init_mems(x.size(0))
 
             logits, mems = model(x, mems)
             loss = criterion(logits.view(-1, config.vocab_size), y.view(-1))
