@@ -44,7 +44,8 @@ def test_overfit():
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
-        shuffle=False
+        shuffle=False,
+        drop_last=True
     )
 
     model = TransformerXL(

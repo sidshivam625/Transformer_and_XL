@@ -113,10 +113,15 @@ class MultiHeadAttentionXL(nn.Module):
         mem_span = S - T
         q_pos = torch.arange(T, device=x.device).unsqueeze(1)
         k_pos = torch.arange(S, device=x.device).unsqueeze(0)
-        mask = k_pos <= (q_pos + mem_span)
-        attn = attn.masked_fill(~mask, float('-inf'))
+        mask = (k_pos <= (q_pos + mem_span)).unsqueeze(0).unsqueeze(0)
+
+        # Use a finite floor value to avoid fp16 -inf softmax instability.
+        floor = torch.finfo(attn.dtype).min
+        attn = attn.masked_fill(~mask, floor)
+        attn = attn - attn.max(dim=-1, keepdim=True).values
 
         attn = torch.softmax(attn, dim=-1)
+        attn = torch.nan_to_num(attn, nan=0.0, posinf=0.0, neginf=0.0)
         attn = self.dropout(attn)
 
         out = torch.einsum('bhij,bhjd->bhid', attn, v)

@@ -39,13 +39,15 @@ def train():
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
-        shuffle=False  # IMPORTANT for Transformer-XL
+        shuffle=False,  # IMPORTANT for Transformer-XL
+        drop_last=True
     )
 
     val_loader = DataLoader(
         val_dataset,
         batch_size=config.batch_size,
-        shuffle=False
+        shuffle=False,
+        drop_last=True
     )
 
     # Model
@@ -64,7 +66,8 @@ def train():
     optimizer = AdamW(model.parameters(), lr=config.lr)
 
     # Mixed precision
-    scaler = torch.cuda.amp.GradScaler(enabled=config.use_amp)
+    amp_device = "cuda" if device.type == "cuda" else "cpu"
+    scaler = torch.amp.GradScaler(amp_device, enabled=config.use_amp)
 
     # Scheduler & Logging
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.epochs)
@@ -92,6 +95,7 @@ def train():
         model.train()
 
         mems = None
+        mem_batch_size = None
 
         total_loss = 0
 
@@ -101,18 +105,25 @@ def train():
             x = x.to(device)
             y = y.to(device)
 
-            if mems is None:
+            if mems is None or mem_batch_size != x.size(0):
                 mems = model.init_mems(x.size(0))
+                mem_batch_size = x.size(0)
 
             optimizer.zero_grad()
 
-            with torch.cuda.amp.autocast(enabled=config.use_amp):
+            with torch.amp.autocast(amp_device, enabled=config.use_amp):
                 logits, mems = model(x, mems)
 
                 loss = criterion(
                     logits.view(-1, config.vocab_size),
                     y.view(-1)
                 )
+
+            if not torch.isfinite(loss):
+                print("Encountered non-finite loss; skipping batch.")
+                mems = model.init_mems(x.size(0))
+                mem_batch_size = x.size(0)
+                continue
 
             scaler.scale(loss).backward()
 
@@ -140,14 +151,16 @@ def train():
         val_loss = 0
 
         mems = None
+        mem_batch_size = None
 
         with torch.no_grad():
             for x, y in val_loader:
                 x = x.to(device)
                 y = y.to(device)
 
-                if mems is None:
+                if mems is None or mem_batch_size != x.size(0):
                     mems = model.init_mems(x.size(0))
+                    mem_batch_size = x.size(0)
 
                 logits, mems = model(x, mems)
 

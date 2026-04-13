@@ -1,4 +1,5 @@
 import torch
+import warnings
 from torch.utils.data import Dataset
 from transformers import GPT2Tokenizer
 from datasets import load_dataset
@@ -21,10 +22,16 @@ class WikiText2Dataset(Dataset):
         )
 
         # Tokenizer
-        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2", model_max_length=10_000_000)
+        self.tokenizer.model_max_length = 10_000_000
 
         # Encode entire corpus
-        tokens = self.tokenizer.encode(text)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r"Token indices sequence length is longer than the specified maximum sequence length.*",
+            )
+            tokens = self.tokenizer.encode(text)
 
         # Convert to tensor
         self.data = torch.tensor(tokens, dtype=torch.long)
