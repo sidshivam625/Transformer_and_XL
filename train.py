@@ -49,6 +49,7 @@ def train():
         config.seq_len,
         dataset_variant=config.dataset_variant,
         train_percent=100,
+        max_tokens=getattr(config, "max_eval_tokens", None),
     )
 
     train_loader = DataLoader(

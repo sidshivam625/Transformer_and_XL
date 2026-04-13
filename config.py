@@ -5,6 +5,7 @@ class Config:
     dataset_variant = "TinyStories"  # resolved to roneneldan/TinyStories in dataset loader
     train_percent = 30  # used only for train split when < 100
     max_train_tokens = 20_000_000  # roughly 20M training tokens
+    max_eval_tokens = 2_000_000  # keep eval memory bounded in notebooks
 
     # Model
     vocab_size = 50257

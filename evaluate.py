@@ -39,6 +39,7 @@ def evaluate(split="test"):
         config.seq_len,
         dataset_variant=config.dataset_variant,
         train_percent=100,
+        max_tokens=getattr(config, "max_eval_tokens", None),
     )
     loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=False, drop_last=True)
 

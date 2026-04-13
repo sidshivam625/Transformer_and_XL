@@ -1,5 +1,5 @@
 import torch
-import warnings
+import array
 from torch.utils.data import Dataset
 from transformers import GPT2Tokenizer
 from datasets import load_dataset
@@ -28,41 +28,51 @@ class WikiText2Dataset(Dataset):
 
         # Load dataset
         source = "roneneldan/TinyStories" if self.dataset_variant in {"TinyStories", "roneneldan/TinyStories"} else self.dataset_variant
-        raw = load_dataset(source, split=split_expr)
-
-        # Remove empty lines and join into one long string
-        text = "\n".join(
-            [t for t in raw["text"] if t.strip() != ""]
-        )
+        raw = load_dataset(source, split=split_expr, streaming=True)
 
         # Tokenizer
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2", model_max_length=10_000_000)
         self.tokenizer.model_max_length = 10_000_000
 
-        # Encode entire corpus
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message=r"Token indices sequence length is longer than the specified maximum sequence length.*",
-            )
-            tokens = self.tokenizer.encode(text)
+        # Encode incrementally so we never materialize the full dataset text in RAM.
+        token_buffer = array.array("I")
+        token_limit = None if max_tokens is None else int(max(2, max_tokens))
 
-        if max_tokens is not None:
-            max_tokens = int(max(2, max_tokens))
-            tokens = tokens[:max_tokens]
+        for example in raw:
+            text = example.get("text", "")
+            if not text or not text.strip():
+                continue
 
-        # Convert to tensor
-        self.data = torch.tensor(tokens, dtype=torch.long)
+            ids = self.tokenizer.encode(text, add_special_tokens=False)
+            if not ids:
+                continue
+
+            if token_limit is None:
+                token_buffer.extend(ids)
+                continue
+
+            remaining = token_limit - len(token_buffer)
+            if remaining <= 0:
+                break
+
+            if len(ids) <= remaining:
+                token_buffer.extend(ids)
+            else:
+                token_buffer.extend(ids[:remaining])
+                break
+
+        # Keep storage compact; cast to long on retrieval for the embedding layer.
+        self.data = torch.tensor(token_buffer, dtype=torch.int32)
 
     def __len__(self):
         # number of segments
-        return (len(self.data) - 1) // self.seq_len
+        return max(0, (len(self.data) - 1) // self.seq_len)
 
     def __getitem__(self, idx):
         start = idx * self.seq_len
         end = start + self.seq_len + 1
 
-        chunk = self.data[start:end]
+        chunk = self.data[start:end].to(dtype=torch.long)
 
         x = chunk[:-1]   # input
         y = chunk[1:]    # target (shifted)
