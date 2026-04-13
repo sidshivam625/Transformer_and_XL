@@ -17,7 +17,7 @@ class Config:
     epochs = 5
     resume_checkpoint = None # e.g., "checkpoint_epoch_2.pt" or "best_checkpoint.pt"
     use_amp = True # mixed precision training
-    use_wandb = True
+    use_wandb = False
     checkpoint_path = "best_checkpoint.pt"
     
 
