@@ -42,6 +42,7 @@ def train():
         config.seq_len,
         dataset_variant=config.dataset_variant,
         train_percent=config.train_percent,
+        max_tokens=getattr(config, "max_train_tokens", None),
     )
     val_dataset = WikiText2Dataset(
         "validation",

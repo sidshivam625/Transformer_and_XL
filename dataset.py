@@ -6,12 +6,13 @@ from datasets import load_dataset
 
 
 class WikiText2Dataset(Dataset):
-    def __init__(self, split, seq_len, dataset_variant="wikitext-2-raw-v1", train_percent=100):
+    def __init__(self, split, seq_len, dataset_variant="TinyStories", train_percent=100, max_tokens=None):
         """
         split: 'train', 'validation', or 'test'
         seq_len: length of each segment
-        dataset_variant: Hugging Face subset, e.g. wikitext-2-raw-v1 or wikitext-103-raw-v1
+        dataset_variant: dataset id or alias, e.g. TinyStories / roneneldan/TinyStories
         train_percent: percentage of train split to load when split='train'
+        max_tokens: optional hard cap on number of tokens to keep
         """
         self.seq_len = seq_len
         self.dataset_variant = dataset_variant
@@ -21,8 +22,13 @@ class WikiText2Dataset(Dataset):
         if split == "train" and train_percent < 100:
             split_expr = f"train[:{train_percent}%]"
 
+        # TinyStories provides train/validation; map test requests to validation.
+        if split == "test":
+            split_expr = "validation"
+
         # Load dataset
-        raw = load_dataset("wikitext", self.dataset_variant, split=split_expr)
+        source = "roneneldan/TinyStories" if self.dataset_variant in {"TinyStories", "roneneldan/TinyStories"} else self.dataset_variant
+        raw = load_dataset(source, split=split_expr)
 
         # Remove empty lines and join into one long string
         text = "\n".join(
@@ -40,6 +46,10 @@ class WikiText2Dataset(Dataset):
                 message=r"Token indices sequence length is longer than the specified maximum sequence length.*",
             )
             tokens = self.tokenizer.encode(text)
+
+        if max_tokens is not None:
+            max_tokens = int(max(2, max_tokens))
+            tokens = tokens[:max_tokens]
 
         # Convert to tensor
         self.data = torch.tensor(tokens, dtype=torch.long)

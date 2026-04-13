@@ -2,8 +2,9 @@ import torch
 
 class Config:
     # Data
-    dataset_variant = "wikitext-103-raw-v1"  # alternatives: wikitext-2-raw-v1, wikitext-103-raw-v1
+    dataset_variant = "TinyStories"  # resolved to roneneldan/TinyStories in dataset loader
     train_percent = 30  # used only for train split when < 100
+    max_train_tokens = 20_000_000  # roughly 20M training tokens
 
     # Model
     vocab_size = 50257
