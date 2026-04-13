@@ -2,7 +2,7 @@ import torch
 import array
 from torch.utils.data import Dataset
 from transformers import GPT2Tokenizer
-from datasets import load_dataset
+from datasets import load_dataset, load_dataset_builder
 
 
 class WikiText2Dataset(Dataset):
@@ -19,8 +19,6 @@ class WikiText2Dataset(Dataset):
 
         train_percent = int(max(1, min(100, train_percent)))
         split_expr = split
-        if split == "train" and train_percent < 100:
-            split_expr = f"train[:{train_percent}%]"
 
         # TinyStories provides train/validation; map test requests to validation.
         if split == "test":
@@ -30,6 +28,18 @@ class WikiText2Dataset(Dataset):
         source = "roneneldan/TinyStories" if self.dataset_variant in {"TinyStories", "roneneldan/TinyStories"} else self.dataset_variant
         raw = load_dataset(source, split=split_expr, streaming=True)
 
+        max_examples = None
+        if split_expr == "train" and train_percent < 100:
+            # Streaming mode does not support split slicing like train[:30%].
+            # Estimate the number of examples from split metadata and stop early.
+            try:
+                builder = load_dataset_builder(source)
+                split_info = builder.info.splits.get("train") if builder.info and builder.info.splits else None
+                if split_info is not None and getattr(split_info, "num_examples", None):
+                    max_examples = max(1, int(split_info.num_examples * (train_percent / 100.0)))
+            except Exception:
+                max_examples = None
+
         # Tokenizer
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2", model_max_length=10_000_000)
         self.tokenizer.model_max_length = 10_000_000
@@ -38,7 +48,13 @@ class WikiText2Dataset(Dataset):
         token_buffer = array.array("I")
         token_limit = None if max_tokens is None else int(max(2, max_tokens))
 
+        examples_seen = 0
         for example in raw:
+            if max_examples is not None and examples_seen >= max_examples:
+                break
+
+            examples_seen += 1
+
             text = example.get("text", "")
             if not text or not text.strip():
                 continue
