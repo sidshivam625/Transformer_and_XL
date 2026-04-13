@@ -34,7 +34,12 @@ def evaluate(split="test"):
     device = torch.device(config.device if torch.cuda.is_available() else "cpu")
     model, config = load_model(device)
 
-    dataset = WikiText2Dataset(split, config.seq_len)
+    dataset = WikiText2Dataset(
+        split,
+        config.seq_len,
+        dataset_variant=config.dataset_variant,
+        train_percent=100,
+    )
     loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=False, drop_last=True)
 
     criterion = torch.nn.CrossEntropyLoss()

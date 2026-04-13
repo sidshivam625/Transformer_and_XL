@@ -1,20 +1,27 @@
 import torch
 
 class Config:
+    # Data
+    dataset_variant = "wikitext-103-raw-v1"  # alternatives: wikitext-2-raw-v1, wikitext-103-raw-v1
+    train_percent = 30  # used only for train split when < 100
+
     # Model
     vocab_size = 50257
-    d_model = 320
-    n_heads = 5
-    n_layers = 7
-    d_ff = 1280
-    mem_len = 144
+    d_model = 512
+    n_heads = 8
+    n_layers = 8
+    d_ff = 2048
+    mem_len = 192
     dropout = 0.1
 
     # Training
-    batch_size = 7
-    seq_len = 128
-    lr = 2e-4
-    epochs = 5
+    batch_size = 8
+    seq_len = 192
+    lr = 2.5e-4
+    epochs = 12
+    grad_accum_steps = 2
+    warmup_steps = 1000
+    min_lr_ratio = 0.1
     resume_checkpoint = None # e.g., "checkpoint_epoch_2.pt" or "best_checkpoint.pt"
     use_amp = True # mixed precision training
     use_wandb = True

@@ -6,19 +6,27 @@ from datasets import load_dataset
 
 
 class WikiText2Dataset(Dataset):
-    def __init__(self, split, seq_len):
+    def __init__(self, split, seq_len, dataset_variant="wikitext-2-raw-v1", train_percent=100):
         """
         split: 'train', 'validation', or 'test'
         seq_len: length of each segment
+        dataset_variant: Hugging Face subset, e.g. wikitext-2-raw-v1 or wikitext-103-raw-v1
+        train_percent: percentage of train split to load when split='train'
         """
         self.seq_len = seq_len
+        self.dataset_variant = dataset_variant
+
+        train_percent = int(max(1, min(100, train_percent)))
+        split_expr = split
+        if split == "train" and train_percent < 100:
+            split_expr = f"train[:{train_percent}%]"
 
         # Load dataset
-        raw = load_dataset("wikitext", "wikitext-2-raw-v1")
+        raw = load_dataset("wikitext", self.dataset_variant, split=split_expr)
 
         # Remove empty lines and join into one long string
         text = "\n".join(
-            [t for t in raw[split]["text"] if t.strip() != ""]
+            [t for t in raw["text"] if t.strip() != ""]
         )
 
         # Tokenizer
