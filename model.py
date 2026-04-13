@@ -86,6 +86,9 @@ class MultiHeadAttentionXL(nn.Module):
     def forward(self, x, mem, r_emb, mask=None):
         if mem is not None:
             mem = mem.detach()
+            # Defensive check: if batch size changed (last batch), slice memory to match
+            if mem.size(0) != x.size(0):
+                mem = mem[:x.size(0)]
             x_cat = torch.cat([mem, x], dim=1)
         else:
             x_cat = x

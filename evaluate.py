@@ -35,7 +35,7 @@ def evaluate(split="test"):
     model, config = load_model(device)
 
     dataset = WikiText2Dataset(split, config.seq_len)
-    loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=False)
+    loader = DataLoader(dataset, batch_size=config.batch_size, shuffle=False, drop_last=True)
 
     criterion = torch.nn.CrossEntropyLoss()
     total_loss = 0.0
